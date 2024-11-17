@@ -1,0 +1,100 @@
+#include <cassert>
+#include <iostream>
+#include <functional>
+
+void runGridTests() {
+    std::cout << "Running Grid Tests\n";
+    std::cout << "==================\n";
+
+    // Test 1: Basic Construction and Access
+    try {
+        intGrid grid(64, 64, 64);
+        grid(0, 0, 0) = 1;
+        grid(0, 1, 0) = 2;
+        grid(0, 3, 0) = 3;
+        grid(0, 4, 0) = 4;
+        
+        assert(grid(0, 0, 0) == 1);
+        assert(grid(0, 1, 0) == 2);
+        assert(grid(0, 3, 0) == 3);
+        assert(grid(0, 4, 0) == 4);
+        std::cout << "PASSED: Basic construction and access\n";
+    } catch (const std::exception& e) {
+        std::cout << "FAILED: Basic construction and access - " << e.what() << "\n";
+    }
+
+    // Test 2: Boundary Detection
+    try {
+        intGrid grid(3, 3, 3);
+        assert(grid.getBoundaryType(0, 1, 1) == Boundary::LEFT);
+        assert(grid.getBoundaryType(2, 1, 1) == Boundary::RIGHT);
+        assert(grid.getBoundaryType(1, 0, 1) == Boundary::BACK);
+        assert(grid.getBoundaryType(1, 2, 1) == Boundary::FRONT);
+        assert(grid.getBoundaryType(1, 1, 0) == Boundary::BOTTOM);
+        assert(grid.getBoundaryType(1, 1, 2) == Boundary::TOP);
+        assert(grid.getBoundaryType(1, 1, 1) == Boundary::INTERIOR);
+        std::cout << "PASSED: Boundary detection\n";
+    } catch (const std::exception& e) {
+        std::cout << "FAILED: Boundary detection - " << e.what() << "\n";
+    }
+
+    // Test 3: Boundary Setting
+    try {
+        intGrid grid(5, 5, 5);
+        grid.setBoundaryValue(Boundary::TOP, 1);
+        grid.setBoundaryValue(Boundary::BOTTOM, 2);
+        grid.setBoundaryValue(Boundary::LEFT, 3);
+        grid.setBoundaryValue(Boundary::RIGHT, 4);
+        grid.setBoundaryValue(Boundary::FRONT, 5);
+        grid.setBoundaryValue(Boundary::BACK, 6);
+
+        // Verify some boundary values
+        assert(grid(2, 2, 4) == 1); // TOP
+        assert(grid(2, 2, 0) == 2); // BOTTOM
+        assert(grid(0, 2, 2) == 3); // LEFT
+        assert(grid(4, 2, 2) == 4); // RIGHT
+        std::cout << "PASSED: Boundary setting\n";
+    } catch (const std::exception& e) {
+        std::cout << "FAILED: Boundary setting - " << e.what() << "\n";
+    }
+
+    // Test 4: Boundary Function Application
+    try {
+        doubleGrid grid(4, 4, 4);
+        auto linear_function = [](size_t i, size_t j, size_t k) -> double {
+            return i + j + k;
+        };
+        grid.applyToBoundary(Boundary::TOP, linear_function);
+        
+        // Verify function application
+        assert(grid(1, 2, 3) == linear_function(1, 2, 3));
+        std::cout << "PASSED: Boundary function application\n";
+    } catch (const std::exception& e) {
+        std::cout << "FAILED: Boundary function application - " << e.what() << "\n";
+    }
+
+    // Test 5: Slicing
+    try {
+        intGrid grid(3, 3, 3);
+        for (size_t i = 0; i < 3; ++i)
+            for (size_t j = 0; j < 3; ++j)
+                for (size_t k = 0; k < 3; ++k)
+                    grid(i, j, k) = i + j + k;
+
+        auto slice = grid.getSlice(0, 1); // YZ plane at x=1
+        assert(slice.size() == 9);  // 3x3 slice
+        std::cout << "PASSED: Grid slicing\n";
+    } catch (const std::exception& e) {
+        std::cout << "FAILED: Grid slicing - " << e.what() << "\n";
+    }
+}
+
+int main() {
+    try {
+        runGridTests();
+        std::cout << "\nAll grid tests completed.\n";
+    } catch (const std::exception& e) {
+        std::cout << "Unexpected exception in main: " << e.what() << "\n";
+    }
+    return 0;
+}
