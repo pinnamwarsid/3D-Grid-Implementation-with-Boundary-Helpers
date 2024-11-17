@@ -1,0 +1,51 @@
+//output:
+Running Grid Tests
+
+PASSED: Basic construction and access
+PASSED: Boundary detection
+PASSED: Boundary setting
+PASSED: Boundary function application
+PASSED: Grid slicing
+
+All grid tests completed.
+
+Grid Visualization Test
+
+
+Test 1: Basic Assignment
+Slice at z = 0:
+   1    0    0    0    0 
+   2    0    0    0    0 
+   0    0    0    0    0 
+   3    0    0    0    0 
+   4    0    0    0    0 
+
+Test 2: Setting Boundaries
+Bottom slice (z = 0):
+   1    1    1    1    1 
+   1    0    0    0    1 
+   1    0    0    0    1 
+   1    0    0    0    1 
+   1    1    1    1    1 
+
+Middle slice (z = 2):
+   3    0    0    0    7 
+   3    0    0    0    7 
+   3    0    0    0    7 
+   3    0    0    0    7 
+   3    0    0    0    7 
+
+Top slice (z = 4):
+   9    9    9    9    9 
+   9    9    9    9    9 
+   9    9    9    9    9 
+   9    9    9    9    9 
+   9    9    9    9    9 
+
+Test 3: Applying Pattern to Top Face
+Slice at z = 4:
+   0    1    2    3    4 
+   1    2    3    4    5 
+   2    3    4    5    6 
+   3    4    5    6    7 
+   4    5    6    7    8
