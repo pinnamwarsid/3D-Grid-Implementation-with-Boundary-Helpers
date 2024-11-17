@@ -1,0 +1,199 @@
+#include <vector>
+#include <stdexcept>
+#include <array>
+
+// Enum for boundary faces
+enum class Boundary {
+    TOP,    // Z max
+    BOTTOM, // Z min
+    LEFT,   // X min
+    RIGHT,  // X max
+    FRONT,  // Y max
+    BACK,   // Y min
+    INTERIOR
+};
+
+template<typename T>
+class Grid {
+private:
+    size_t nx, ny, nz;  // Dimensions
+    std::vector<T> data;
+
+    // Helper to convert 3D indices to 1D
+    size_t index(size_t i, size_t j, size_t k) const {
+        if (i >= nx || j >= ny || k >= nz) {
+            throw std::out_of_range("Grid index out of bounds");
+        }
+        return i + nx * (j + ny * k);
+    }
+
+public:
+    Grid(size_t x_size, size_t y_size, size_t z_size) 
+        : nx(x_size), ny(y_size), nz(z_size) {
+        if (x_size == 0 || y_size == 0 || z_size == 0) {
+            throw std::invalid_argument("Grid dimensions must be positive");
+        }
+        data.resize(x_size * y_size * z_size);
+    }
+
+    // Access operators
+    T& operator()(size_t i, size_t j, size_t k) {
+        return data[index(i, j, k)];
+    }
+
+    const T& operator()(size_t i, size_t j, size_t k) const {
+        return data[index(i, j, k)];
+    }
+
+    // Get dimensions
+    std::array<size_t, 3> dimensions() const {
+        return {nx, ny, nz};
+    }
+
+    // Identify boundary type for a given point
+    Boundary getBoundaryType(size_t i, size_t j, size_t k) const {
+        if (i >= nx || j >= ny || k >= nz) {
+            throw std::out_of_range("Grid index out of bounds");
+        }
+
+        if (k == nz - 1) return Boundary::TOP;
+        if (k == 0) return Boundary::BOTTOM;
+        if (i == 0) return Boundary::LEFT;
+        if (i == nx - 1) return Boundary::RIGHT;
+        if (j == ny - 1) return Boundary::FRONT;
+        if (j == 0) return Boundary::BACK;
+        return Boundary::INTERIOR;
+    }
+
+    // Iterator for specific boundary faces
+    class BoundaryIterator {
+    private:
+        const Grid& grid;
+        Boundary boundary;
+        size_t current_i, current_j, current_k;
+        bool done;
+
+        void init() {
+            switch (boundary) {
+                case Boundary::TOP:
+                    current_k = grid.nz - 1;
+                    break;
+                case Boundary::BOTTOM:
+                    current_k = 0;
+                    break;
+                case Boundary::LEFT:
+                    current_i = 0;
+                    break;
+                case Boundary::RIGHT:
+                    current_i = grid.nx - 1;
+                    break;
+                case Boundary::FRONT:
+                    current_j = grid.ny - 1;
+                    break;
+                case Boundary::BACK:
+                    current_j = 0;
+                    break;
+                default:
+                    done = true;
+            }
+        }
+
+    public:
+        BoundaryIterator(const Grid& g, Boundary b)
+            : grid(g), boundary(b), current_i(0), current_j(0), current_k(0), done(false) {
+            init();
+        }
+
+        bool next(size_t& i, size_t& j, size_t& k) {
+            if (done) return false;
+
+            i = current_i;
+            j = current_j;
+            k = current_k;
+
+            switch (boundary) {
+                case Boundary::TOP:
+                case Boundary::BOTTOM:
+                    if (++current_i >= grid.nx) {
+                        current_i = 0;
+                        if (++current_j >= grid.ny) done = true;
+                    }
+                    break;
+                case Boundary::LEFT:
+                case Boundary::RIGHT:
+                    if (++current_j >= grid.ny) {
+                        current_j = 0;
+                        if (++current_k >= grid.nz) done = true;
+                    }
+                    break;
+                case Boundary::FRONT:
+                case Boundary::BACK:
+                    if (++current_i >= grid.nx) {
+                        current_i = 0;
+                        if (++current_k >= grid.nz) done = true;
+                    }
+                    break;
+            }
+            return true;
+        }
+    };
+
+    // Helper methods for setting boundary conditions
+    void setBoundaryValue(Boundary boundary, const T& value) {
+        BoundaryIterator iter(*this, boundary);
+        size_t i, j, k;
+        while (iter.next(i, j, k)) {
+            (*this)(i, j, k) = value;
+        }
+    }
+
+    // Helper to apply a function to all points on a boundary
+    template<typename Func>
+    void applyToBoundary(Boundary boundary, Func func) {
+        BoundaryIterator iter(*this, boundary);
+        size_t i, j, k;
+        while (iter.next(i, j, k)) {
+            (*this)(i, j, k) = func(i, j, k);
+        }
+    }
+
+    // Reset all values
+    void reset(const T& value = T()) {
+        std::fill(data.begin(), data.end(), value);
+    }
+
+    // Get a slice of the grid (e.g., for visualization)
+    std::vector<T> getSlice(size_t fixed_dim, size_t index) const {
+        std::vector<T> slice;
+        switch (fixed_dim) {
+            case 0: // YZ plane
+                if (index >= nx) throw std::out_of_range("Invalid slice index");
+                slice.resize(ny * nz);
+                for (size_t k = 0; k < nz; ++k)
+                    for (size_t j = 0; j < ny; ++j)
+                        slice[j + ny * k] = (*this)(index, j, k);
+                break;
+            case 1: // XZ plane
+                if (index >= ny) throw std::out_of_range("Invalid slice index");
+                slice.resize(nx * nz);
+                for (size_t k = 0; k < nz; ++k)
+                    for (size_t i = 0; i < nx; ++i)
+                        slice[i + nx * k] = (*this)(i, index, k);
+                break;
+            case 2: // XY plane
+                if (index >= nz) throw std::out_of_range("Invalid slice index");
+                slice.resize(nx * ny);
+                for (size_t j = 0; j < ny; ++j)
+                    for (size_t i = 0; i < nx; ++i)
+                        slice[i + nx * j] = (*this)(i, j, index);
+                break;
+            default:
+                throw std::invalid_argument("Invalid dimension index");
+        }
+        return slice;
+    }
+};
+
+// Convenience typedefs
+using intGrid = Grid<int>;
+using doubleGrid = Grid<double>;
